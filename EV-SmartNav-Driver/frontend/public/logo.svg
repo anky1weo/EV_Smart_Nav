@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400">
+  <!-- Circle intersecting the text -->
+  <circle cx="200" cy="200" r="90" fill="none" stroke="white" stroke-width="8" />
+  
+  <!-- Text Elements -->
+  <g font-family="Arial, Helvetica, sans-serif" fill="white">
+    <text x="80" y="180" font-size="80" font-weight="bold">E</text>
+    <text x="135" y="180" font-size="50">v</text>
+    
+    <text x="70" y="240" font-size="45" font-weight="bold" letter-spacing="2">SMART NAV</text>
+  </g>
+</svg>
