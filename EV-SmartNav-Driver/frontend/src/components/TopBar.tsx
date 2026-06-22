@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Search, Bell, Battery, User, LogOut } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -11,6 +11,7 @@ interface TopBarProps {
 export function TopBar({ currentBattery, setCurrentBattery }: TopBarProps) {
   const navigate = useNavigate();
   const { profile, vehicle, signOut } = useAuth();
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
 
   const handleSignOut = async () => {
     await signOut();
@@ -19,9 +20,8 @@ export function TopBar({ currentBattery, setCurrentBattery }: TopBarProps) {
 
   // Use the shared battery state for global UI
   const batteryPct = parseInt(currentBattery) || 0;
-  const estimatedRange = vehicle?.battery_capacity_kwh
-    ? Math.round((vehicle.battery_capacity_kwh * (batteryPct / 100)) * 5)
-    : Math.round(60 * (batteryPct / 100) * 5);
+  const maxRange = vehicle?.total_range_km || (vehicle?.battery_capacity_kwh ? vehicle.battery_capacity_kwh * 5 : 300);
+  const estimatedRange = Math.round(maxRange * (batteryPct / 100));
 
   return (
     <header className="h-20 border-b border-white/5 bg-black/40 backdrop-blur-xl flex items-center justify-between px-8 sticky top-0 z-30">
@@ -53,10 +53,64 @@ export function TopBar({ currentBattery, setCurrentBattery }: TopBarProps) {
         </div>
 
         {/* Notifications */}
-        <button className="relative w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10 transition-colors">
-          <Bell className="w-4 h-4 text-white/80" />
-          <span className="absolute top-2 right-2 w-2 h-2 bg-emerald-500 rounded-full border border-black" />
-        </button>
+        <div className="relative">
+          <button 
+            onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
+            className={`w-10 h-10 rounded-full border flex items-center justify-center transition-all ${isNotificationsOpen ? 'bg-emerald-500/20 border-emerald-500 text-emerald-400' : 'bg-white/5 border-white/10 text-white/80 hover:bg-white/10'}`}
+          >
+            <Bell className="w-4 h-4" />
+            <span className="absolute top-2 right-2 w-2 h-2 bg-emerald-500 rounded-full border border-black animate-pulse" />
+          </button>
+
+          {/* Dropdown Panel */}
+          {isNotificationsOpen && (
+            <div className="absolute right-0 mt-3 w-80 bg-[#161925] border border-white/10 rounded-2xl shadow-2xl overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+              <div className="p-4 border-b border-white/5 bg-black/20 flex justify-between items-center">
+                <h3 className="font-bold text-white">Notifications</h3>
+                <span className="text-xs font-semibold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full">3 New</span>
+              </div>
+              <div className="max-h-80 overflow-y-auto custom-scrollbar">
+                
+                <div className="p-4 border-b border-white/5 hover:bg-white/5 transition-colors cursor-pointer group">
+                  <div className="flex items-start gap-3">
+                    <div className="mt-1 w-2 h-2 rounded-full bg-emerald-500 shrink-0 shadow-[0_0_8px_rgba(16,185,129,0.8)]" />
+                    <div>
+                      <p className="text-sm font-semibold text-white group-hover:text-emerald-400 transition-colors">Route Optimized</p>
+                      <p className="text-xs text-white/60 mt-1">Your daily commute route has been updated. You will save 4% more battery today.</p>
+                      <p className="text-[10px] text-white/40 mt-2 font-medium">10 mins ago</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-4 border-b border-white/5 hover:bg-white/5 transition-colors cursor-pointer group">
+                  <div className="flex items-start gap-3">
+                    <div className="mt-1 w-2 h-2 rounded-full bg-emerald-500 shrink-0 shadow-[0_0_8px_rgba(16,185,129,0.8)]" />
+                    <div>
+                      <p className="text-sm font-semibold text-white group-hover:text-emerald-400 transition-colors">Eco Points Awarded! 🎉</p>
+                      <p className="text-xs text-white/60 mt-1">You earned 50 Eco Points for completing your last trip efficiently.</p>
+                      <p className="text-[10px] text-white/40 mt-2 font-medium">2 hours ago</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-4 hover:bg-white/5 transition-colors cursor-pointer group">
+                  <div className="flex items-start gap-3">
+                    <div className="mt-1 w-2 h-2 rounded-full bg-blue-500 shrink-0" />
+                    <div>
+                      <p className="text-sm font-semibold text-white group-hover:text-blue-400 transition-colors">New Station Alert</p>
+                      <p className="text-xs text-white/60 mt-1">A new 150kW Ultra-Fast charger just opened 5km from your location.</p>
+                      <p className="text-[10px] text-white/40 mt-2 font-medium">Yesterday</p>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+              <div className="p-3 bg-black/40 text-center border-t border-white/5">
+                <button className="text-xs font-semibold text-white/50 hover:text-white transition-colors">Mark all as read</button>
+              </div>
+            </div>
+          )}
+        </div>
 
         {/* Sign Out */}
         <button

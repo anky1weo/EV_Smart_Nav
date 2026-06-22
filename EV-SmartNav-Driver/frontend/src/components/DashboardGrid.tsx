@@ -9,10 +9,26 @@ import { supabase } from '../lib/supabase';
 import type { ChargingStation } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
 
-export function DashboardGrid({ currentBattery }: { currentBattery: string }) {
+interface DashboardGridProps {
+  currentBattery: string;
+  routeCoordinates: [number, number][];
+  setRouteCoordinates: React.Dispatch<React.SetStateAction<[number, number][]>>;
+  tripStats: { distance: string; eta: string };
+  setTripStats: React.Dispatch<React.SetStateAction<{ distance: string; eta: string }>>;
+  setActiveTab: React.Dispatch<React.SetStateAction<string>>;
+  onRouteCalculated: (data: any) => Promise<void>;
+}
+
+export function DashboardGrid({ 
+  currentBattery, 
+  routeCoordinates, 
+  setRouteCoordinates, 
+  tripStats, 
+  setTripStats, 
+  setActiveTab,
+  onRouteCalculated
+}: DashboardGridProps) {
   const { vehicle } = useAuth();
-  const [routeCoordinates, setRouteCoordinates] = useState<[number, number][]>([]);
-  const [tripStats, setTripStats] = useState({ distance: '0 km', eta: '0h 0m' });
   const [stations, setStations] = useState<ChargingStation[]>([]);
   const [stationsLoading, setStationsLoading] = useState(true);
   const [stationFilter, setStationFilter] = useState<'all' | 'Fast' | 'Ultra-Fast'>('all');
@@ -44,73 +60,9 @@ export function DashboardGrid({ currentBattery }: { currentBattery: string }) {
   // Use real vehicle battery data synced with TopBar
   const batteryPct = parseInt(currentBattery) || 0;
   const batteryCapacity = vehicle?.battery_capacity_kwh ?? 60;
-  const estimatedRange = Math.round((batteryCapacity * (batteryPct / 100)) * 5);
+  const maxRange = vehicle?.total_range_km || (batteryCapacity * 5);
+  const estimatedRange = Math.round(maxRange * (batteryPct / 100));
 
-  const handleRouteCalculated = async (data: any) => {
-    try {
-      // 1. Geocode all addresses (source, stops, destination)
-      const places = [data.source, ...data.stops, data.destination].filter(Boolean);
-      const coords: [number, number][] = [];
-      
-      for (const place of places) {
-        // If user used "Use My Location", it might be "lat, lng" format
-        if (place.match(/^-?\d+(\.\d+)?,\s*-?\d+(\.\d+)?$/)) {
-          const [lat, lng] = place.split(',').map(Number);
-          coords.push([lat, lng]);
-          continue;
-        }
-        
-        // Otherwise use Nominatim for geocoding
-        const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(place)}`);
-        const result = await response.json();
-        if (result && result.length > 0) {
-          coords.push([parseFloat(result[0].lat), parseFloat(result[0].lon)]);
-        }
-      }
-
-      if (coords.length >= 2) {
-        // 2. Get OSRM Route
-        const coordinatesString = coords.map(c => `${c[1]},${c[0]}`).join(';');
-        const osrmResponse = await fetch(`https://router.project-osrm.org/route/v1/driving/${coordinatesString}?overview=full&geometries=geojson`);
-        const osrmData = await osrmResponse.json();
-
-        if (osrmData.code === 'Ok') {
-          // OSRM returns GeoJSON coordinates in [lng, lat], Leaflet expects [lat, lng]
-          const routeLatLngs = osrmData.routes[0].geometry.coordinates.map((c: number[]) => [c[1], c[0]]);
-          setRouteCoordinates(routeLatLngs);
-          
-          // Update stats
-          const distKm = (osrmData.routes[0].distance / 1000).toFixed(1);
-          const timeHrs = Math.floor(osrmData.routes[0].duration / 3600);
-          const timeMins = Math.floor((osrmData.routes[0].duration % 3600) / 60);
-          setTripStats({ distance: `${distKm} km`, eta: `${timeHrs}h ${timeMins}m` });
-
-          // Save trip to Supabase
-          const { data: { user } } = await supabase.auth.getUser();
-          if (user) {
-            await supabase.from('trips').insert({
-              user_id: user.id,
-              source_name: data.source,
-              destination_name: data.destination,
-              source_lat: coords[0][0],
-              source_lng: coords[0][1],
-              destination_lat: coords[coords.length - 1][0],
-              destination_lng: coords[coords.length - 1][1],
-              distance_km: parseFloat(distKm),
-              duration_minutes: timeHrs * 60 + timeMins,
-              battery_start_pct: parseInt(data.battery) || null,
-              charging_stops: 0,
-              estimated_cost: parseFloat(distKm) * 3.6,
-              route_geojson: osrmData.routes[0].geometry,
-            });
-          }
-        }
-      }
-    } catch (error) {
-      console.error("Routing error:", error);
-      alert("Failed to calculate route. Please try again.");
-    }
-  };
 
   // Closest station for "Next Charging Stop"
   const nextStation = stations.length > 0 ? stations[0] : null;
@@ -125,7 +77,7 @@ export function DashboardGrid({ currentBattery }: { currentBattery: string }) {
         <div className="xl:col-span-1 flex flex-col gap-6">
           
           {/* Interactive Journey Planner */}
-          <JourneyPlanner onRouteCalculated={handleRouteCalculated} currentBattery={currentBattery} />
+          <JourneyPlanner onRouteCalculated={onRouteCalculated} currentBattery={currentBattery} />
 
           {/* Quick Stats Grid */}
           <div className="grid grid-cols-2 gap-4">
@@ -163,7 +115,7 @@ export function DashboardGrid({ currentBattery }: { currentBattery: string }) {
 
         {/* Right: Map Area */}
         <div className="xl:col-span-2 bg-white/5 border border-white/10 rounded-3xl overflow-hidden relative min-h-[400px]">
-          <RouteMap routeCoordinates={routeCoordinates} stations={stations} />
+          <RouteMap routeCoordinates={[]} stations={[]} />
           
           {/* Floating Live Traffic Widget */}
           <div className="absolute top-6 right-6 z-[400] bg-black/60 backdrop-blur-md border border-white/10 rounded-xl p-4 shadow-xl">

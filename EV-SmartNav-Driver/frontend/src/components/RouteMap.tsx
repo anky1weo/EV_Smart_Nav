@@ -38,6 +38,20 @@ const AvailableChargingIconHtml = renderToString(
   </div>
 );
 
+const PitstopIconHtml = renderToString(
+  <div className="animate-pulse" style={{ backgroundColor: '#10b981', borderRadius: '50%', width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '3px solid white', boxShadow: '0 0 20px rgba(16,185,129,0.9)' }}>
+    <Zap size={20} color="white" fill="white" />
+  </div>
+);
+
+const PitstopIcon = new L.DivIcon({
+  html: PitstopIconHtml,
+  className: 'custom-charging-icon',
+  iconSize: [36, 36],
+  iconAnchor: [18, 18],
+  popupAnchor: [0, -18],
+});
+
 const ChargingStationIcon = new L.DivIcon({
   html: ChargingIconHtml,
   className: 'custom-charging-icon',
@@ -90,7 +104,7 @@ function RouteBounds({ coordinates }: { coordinates: [number, number][] }) {
 
 interface RouteMapProps {
   routeCoordinates?: [number, number][];
-  stations?: ChargingStation[];
+  stations?: any[]; // Updated to any to support is_pitstop
 }
 
 export default function RouteMap({ routeCoordinates = [], stations = [] }: RouteMapProps) {
@@ -147,11 +161,14 @@ export default function RouteMap({ routeCoordinates = [], stations = [] }: Route
           <Marker
             key={station.id}
             position={[station.latitude, station.longitude]}
-            icon={station.available_slots > 0 ? AvailableStationIcon : ChargingStationIcon}
+            icon={station.is_pitstop ? PitstopIcon : (station.available_slots > 0 ? AvailableStationIcon : ChargingStationIcon)}
           >
             <Popup>
               <div className="text-zinc-900 min-w-[180px]">
-                <p className="font-bold text-sm">{station.name}</p>
+                <div className="flex items-center gap-2 mb-1">
+                  <p className="font-bold text-sm">{station.name}</p>
+                  {station.is_pitstop && <span className="bg-emerald-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider shrink-0">AI Stop</span>}
+                </div>
                 <p className="text-xs text-gray-500 mt-1">{station.address}</p>
                 <div className="mt-2 space-y-1 text-xs">
                   <p>⚡ {station.power_kw} kW • {station.station_type}</p>

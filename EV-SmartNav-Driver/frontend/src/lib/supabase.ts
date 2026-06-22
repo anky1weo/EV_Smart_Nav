@@ -41,6 +41,7 @@ export interface Vehicle {
   battery_capacity_kwh: number | null;
   battery_health_pct: number | null;
   connector_type: string;
+  total_range_km?: number | null;
   created_at: string;
 }
 

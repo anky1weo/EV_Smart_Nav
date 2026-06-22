@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   Phone, Mail, Lock, User, Car, Settings, Navigation, 
@@ -14,7 +14,20 @@ import { useAuth } from '../context/AuthContext';
 export default function Auth() {
   const navigate = useNavigate();
   const { signIn, signUp, session } = useAuth();
+  
   const [isFlipped, setIsFlipped] = useState(false);
+
+  useEffect(() => {
+    if (session) {
+      const role = session.user?.user_metadata?.role;
+      // If logging in on the Gov side but user is a driver, don't auto-navigate. 
+      // Let handleGovSubmit process the error and logout.
+      if (isFlipped && role !== 'gov' && role !== 'operator') {
+        return;
+      }
+      navigate('/dashboard');
+    }
+  }, [session, navigate, isFlipped]);
   const [authError, setAuthError] = useState<string | null>(null);
   const [authLoading, setAuthLoading] = useState(false);
   
@@ -41,6 +54,7 @@ export default function Auth() {
     manufacturingYear: 2024,
     batteryCapacity: '',
     batteryHealth: '',
+    totalRange: '',
     // Preferences
     preferredRoute: 'Fastest',
     minBatteryBuffer: '20',
@@ -130,6 +144,7 @@ export default function Auth() {
               manufacturing_year: driverData.manufacturingYear,
               battery_capacity: parseFloat(driverData.batteryCapacity) || null,
               battery_health: parseFloat(driverData.batteryHealth) || null,
+              total_range: parseFloat(driverData.totalRange) || null,
             }
           );
           if (error) {
@@ -150,61 +165,7 @@ export default function Auth() {
 
   const handleGovSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setAuthError(null);
-    setAuthLoading(true);
-
-    try {
-      if (govMode === 'signin') {
-        const { error } = await signIn(govData.officialEmail, govData.password);
-        if (error) {
-          setAuthError(error.message);
-        } else {
-          navigate('/dashboard');
-        }
-      } else {
-        // Sign Up Step Navigation
-        if (govStep < 3) {
-          setGovStep(prev => prev + 1);
-          setAuthLoading(false);
-          return;
-        } else {
-          const role = govData.role === 'Government User' ? 'gov' : 'operator';
-          const { error, needsConfirmation } = await signUp(
-            govData.officialEmail,
-            govData.password,
-            {
-              full_name: govData.fullName,
-              phone: govData.contactNumber,
-              role,
-              org_name: govData.orgName,
-              org_type: govData.orgType,
-              gst_number: govData.gstNumber,
-              org_contact: govData.orgContact,
-              org_address: govData.orgAddress,
-              designation: govData.designation,
-              employee_id: govData.employeeId,
-              department_name: govData.departmentName,
-              region: govData.region,
-              assigned_stations: govData.assignedStations,
-              access_level: govData.accessLevel,
-              num_charging_stations: parseInt(govData.numChargingStations) || 0,
-              service_areas: govData.serviceAreas,
-            }
-          );
-          if (error) {
-            setAuthError(error.message);
-          } else if (needsConfirmation) {
-            setGovSuccess(true);
-          } else {
-            navigate('/dashboard');
-          }
-        }
-      }
-    } catch (err: any) {
-      setAuthError(err.message || 'An unexpected error occurred');
-    } finally {
-      setAuthLoading(false);
-    }
+    setAuthError("The Gov & Operators platform is currently under development. Registration and login are disabled.");
   };
 
   const resetForms = () => {
@@ -596,6 +557,20 @@ export default function Auth() {
                                         required
                                         placeholder="98"
                                         value={driverData.batteryHealth}
+                                        onChange={handleDriverInputChange}
+                                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-white placeholder-white/20 focus:outline-none focus:border-emerald-500/50 transition-all text-sm"
+                                      />
+                                    </div>
+                                  </div>
+                                  <div className="grid grid-cols-1 gap-4">
+                                    <div className="space-y-1">
+                                      <label className="text-[10px] text-white/60 font-semibold uppercase tracking-wider">Total Range (km) at 100%</label>
+                                      <input
+                                        type="number"
+                                        name="totalRange"
+                                        required
+                                        placeholder="450"
+                                        value={driverData.totalRange}
                                         onChange={handleDriverInputChange}
                                         className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-white placeholder-white/20 focus:outline-none focus:border-emerald-500/50 transition-all text-sm"
                                       />

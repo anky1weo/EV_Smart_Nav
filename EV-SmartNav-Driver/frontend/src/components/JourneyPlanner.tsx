@@ -4,9 +4,10 @@ import { MapPin, Navigation, Battery, Zap, Plus, X, Route as RouteIcon } from 'l
 interface JourneyPlannerProps {
   onRouteCalculated: (routeData: any) => void;
   currentBattery: string;
+  layout?: 'vertical' | 'horizontal';
 }
 
-export function JourneyPlanner({ onRouteCalculated, currentBattery }: JourneyPlannerProps) {
+export function JourneyPlanner({ onRouteCalculated, currentBattery, layout = 'vertical' }: JourneyPlannerProps) {
   const [source, setSource] = useState('');
   const [destination, setDestination] = useState('');
   const [stops, setStops] = useState<string[]>([]);
@@ -39,41 +40,44 @@ export function JourneyPlanner({ onRouteCalculated, currentBattery }: JourneyPla
 
   const calculateRoute = async () => {
     setIsCalculating(true);
-    // Here we would typically geocode the addresses and call OSRM
-    // For this demo, we'll pass the form data up to the dashboard to update the map and stats
-    setTimeout(() => {
-      onRouteCalculated({
+    try {
+      await onRouteCalculated({
         source,
         destination,
         stops,
         battery: currentBattery,
         connector,
-        distance: Math.floor(Math.random() * 300) + 50, // Mock distance
+        distance: 0, 
       });
+    } finally {
       setIsCalculating(false);
-    }, 1500);
+    }
   };
 
   return (
-    <div className="bg-[#0f111a] border border-white/10 rounded-3xl p-6 relative overflow-hidden">
-      <div className="flex items-center gap-2 mb-6">
-        <RouteIcon className="w-5 h-5 text-white" />
-        <h2 className="text-xl font-bold text-white tracking-tight">Journey Details</h2>
-      </div>
+    <div className={`bg-[#0f111a] border border-white/10 ${layout === 'horizontal' ? 'rounded-2xl p-4' : 'rounded-3xl p-6'} relative overflow-hidden`}>
+      {layout === 'vertical' && (
+        <div className="flex items-center gap-2 mb-6">
+          <RouteIcon className="w-5 h-5 text-white" />
+          <h2 className="text-xl font-bold text-white tracking-tight">Journey Details</h2>
+        </div>
+      )}
 
-      <div className="space-y-5">
+      <div className={layout === 'horizontal' ? "flex items-end gap-4 overflow-x-auto scrollbar-hide pb-2" : "space-y-5"}>
         
         {/* Current Location */}
-        <div>
+        <div className={layout === 'horizontal' ? "flex-1 min-w-[200px]" : ""}>
           <div className="flex items-center justify-between mb-2">
-            <label className="text-sm font-semibold text-white/70">Current Location</label>
-            <button 
-              onClick={handleUseMyLocation}
-              className="text-xs font-bold text-emerald-400 flex items-center gap-1 hover:text-emerald-300 transition-colors"
-            >
-              <Navigation className="w-3 h-3" />
-              Use My Location
-            </button>
+            <label className={layout === 'horizontal' ? "text-xs font-semibold text-white/70" : "text-sm font-semibold text-white/70"}>Current Location</label>
+            {layout === 'vertical' && (
+              <button 
+                onClick={handleUseMyLocation}
+                className="text-xs font-bold text-emerald-400 flex items-center gap-1 hover:text-emerald-300 transition-colors"
+              >
+                <Navigation className="w-3 h-3" />
+                Use My Location
+              </button>
+            )}
           </div>
           <div className="relative">
             <MapPin className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
@@ -89,8 +93,8 @@ export function JourneyPlanner({ onRouteCalculated, currentBattery }: JourneyPla
 
         {/* Dynamic Stops */}
         {stops.map((stop, index) => (
-          <div key={index} className="relative">
-            <label className="text-sm font-semibold text-white/70 block mb-2">Stop {index + 1}</label>
+          <div key={index} className={layout === 'horizontal' ? "flex-1 min-w-[200px]" : "relative"}>
+            <label className={`${layout === 'horizontal' ? "text-xs" : "text-sm"} font-semibold text-white/70 block mb-2`}>Stop {index + 1}</label>
             <div className="relative flex items-center gap-2">
               <div className="relative flex-1">
                 <MapPin className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
@@ -112,17 +116,30 @@ export function JourneyPlanner({ onRouteCalculated, currentBattery }: JourneyPla
           </div>
         ))}
 
-        <button 
-          onClick={handleAddStop}
-          className="text-xs font-bold text-emerald-400 flex items-center gap-1 hover:text-emerald-300 transition-colors"
-        >
-          <Plus className="w-3 h-3" />
-          Add Stop
-        </button>
+        {/* Add Stop Button */}
+        {layout === 'vertical' && (
+          <button 
+            onClick={handleAddStop}
+            className="text-xs font-bold text-emerald-400 flex items-center gap-1 hover:text-emerald-300 transition-colors"
+          >
+            <Plus className="w-3 h-3" />
+            Add Stop
+          </button>
+        )}
 
         {/* Destination */}
-        <div>
-          <label className="text-sm font-semibold text-white/70 block mb-2">Destination</label>
+        <div className={layout === 'horizontal' ? "flex-1 min-w-[200px]" : ""}>
+          <div className="flex items-center justify-between mb-2">
+            <label className={`${layout === 'horizontal' ? "text-xs" : "text-sm"} font-semibold text-white/70 block`}>Destination</label>
+            {layout === 'horizontal' && (
+              <button 
+                onClick={handleAddStop}
+                className="text-xs font-bold text-emerald-400 hover:text-emerald-300 transition-colors"
+              >
+                + Add Stop
+              </button>
+            )}
+          </div>
           <div className="relative">
             <RouteIcon className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
             <input 
@@ -136,8 +153,8 @@ export function JourneyPlanner({ onRouteCalculated, currentBattery }: JourneyPla
         </div>
 
         {/* Connector Type */}
-        <div>
-          <label className="text-sm font-semibold text-white/70 block mb-2">Connector Type</label>
+        <div className={layout === 'horizontal' ? "w-32 min-w-[128px]" : ""}>
+          <label className={`${layout === 'horizontal' ? "text-xs" : "text-sm"} font-semibold text-white/70 block mb-2`}>Connector</label>
           <div className="relative">
             <Zap className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40 z-10" />
             <select 
@@ -157,7 +174,7 @@ export function JourneyPlanner({ onRouteCalculated, currentBattery }: JourneyPla
         <button 
           onClick={calculateRoute}
           disabled={isCalculating || !source || !destination}
-          className="w-full bg-[#10b981] hover:bg-[#059669] disabled:opacity-50 disabled:cursor-not-allowed text-black font-bold py-3.5 rounded-xl transition-all flex items-center justify-center gap-2 mt-4"
+          className={`${layout === 'horizontal' ? 'px-6 py-3 shrink-0' : 'w-full py-3.5 mt-4'} bg-[#10b981] hover:bg-[#059669] disabled:opacity-50 disabled:cursor-not-allowed text-black font-bold rounded-xl transition-all flex items-center justify-center gap-2`}
         >
           {isCalculating ? (
             <div className="w-5 h-5 border-2 border-black/20 border-t-black rounded-full animate-spin" />
